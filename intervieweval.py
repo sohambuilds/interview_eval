@@ -1,12 +1,12 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from langchain.llms import Groq
+from langchain_community.llms import HuggingFaceHub
 from langchain.prompts import PromptTemplate
 
 class AnswerComparisonScorer:
-    def __init__(self, groq_api_key, embeddings):
+    def __init__(self, huggingface_api_key, embeddings):
         self.embeddings = embeddings
-        self.llm = Groq(api_key=groq_api_key, temperature=0.2)
+        self.llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.2, "max_length": 512})
         
         self.eval_prompt = PromptTemplate(
             input_variables=["question", "ideal_answer", "actual_answer"],
@@ -47,12 +47,10 @@ class AnswerComparisonScorer:
         similarity_score = self.compute_similarity(ideal_answer, actual_answer)
         llm_evaluation = self.llm_evaluation(question, ideal_answer, actual_answer)
         
-        try:
-            llm_score = float(llm_evaluation.split('\n')[0].split(':')[1].strip()) / 10
-        except (IndexError, ValueError):
-            print("Warning: Could not parse LLM score. Using similarity score only.")
-            llm_score = similarity_score
-
+        # Extract numerical score from LLM evaluation (assuming it's in the format "Score (out of 10): X")
+        llm_score = float(llm_evaluation.split('\n')[0].split(':')[1].strip()) / 10
+        
+        # Combine scores (you can adjust the weights as needed)
         final_score = 0.4 * similarity_score + 0.6 * llm_score
         
         return {
