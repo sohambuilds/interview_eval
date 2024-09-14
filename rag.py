@@ -1,14 +1,14 @@
-import os
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.llms import Groq
+from langchain_community.llms import HuggingFaceHub
 from langchain.chains import RetrievalQA
 from langchain.document_loaders import TextLoader
+import os
 
 class RAGAnswerGenerator:
-    def __init__(self, knowledge_base_dir, groq_api_key):
-        os.environ["GROQ_API_KEY"] = groq_api_key
+    def __init__(self, knowledge_base_dir, huggingface_api_key):
+        os.environ["HUGGINGFACE_API_KEY"] = huggingface_api_key
         self.knowledge_base_dir = knowledge_base_dir
         self.embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
         self.vectorstore = self._create_vectorstore()
@@ -28,7 +28,7 @@ class RAGAnswerGenerator:
         return Chroma.from_documents(texts, self.embeddings)
 
     def _create_qa_chain(self):
-        llm = Groq(temperature=0)
+        llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.5, "max_length": 512})
         return RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
