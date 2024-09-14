@@ -1,15 +1,16 @@
-import os
 from speechrec import speech_to_text, capture_interview_qa
 from rag import RAGAnswerGenerator
 from intervieweval import AnswerComparisonScorer
+from langchain_community.embeddings import HuggingFaceEmbeddings
+import os
 
 class InterviewEvaluationPipeline:
-    def __init__(self, knowledge_base_dir, groq_api_key):
+    def __init__(self, knowledge_base_dir, huggingface_api_key):
         self.knowledge_base_dir = knowledge_base_dir
-        self.groq_api_key = groq_api_key
+        self.huggingface_api_key = huggingface_api_key
         self.embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
-        self.rag_generator = RAGAnswerGenerator(knowledge_base_dir, groq_api_key)
-        self.scorer = AnswerComparisonScorer(groq_api_key, self.embeddings)
+        self.rag_generator = RAGAnswerGenerator(knowledge_base_dir, huggingface_api_key)
+        self.scorer = AnswerComparisonScorer(huggingface_api_key, self.embeddings)
 
     def run_evaluation(self):
         print("Starting the interview evaluation process...")
@@ -36,12 +37,12 @@ class InterviewEvaluationPipeline:
 
 def main():
     knowledge_base_dir = "path/to/your/knowledge/base"
-    groq_api_key = os.getenv("GROQ_API_KEY")
+    huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY")
 
-    if not groq_api_key:
-        raise ValueError("Please set the GROQ_API_KEY environment variable.")
+    if not huggingface_api_key:
+        raise ValueError("Please set the HUGGINGFACE_API_KEY environment variable.")
 
-    pipeline = InterviewEvaluationPipeline(knowledge_base_dir, groq_api_key)
+    pipeline = InterviewEvaluationPipeline(knowledge_base_dir, huggingface_api_key)
     pipeline.run_evaluation()
 
 if __name__ == "__main__":
