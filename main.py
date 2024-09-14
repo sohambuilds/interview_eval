@@ -1,5 +1,4 @@
 import os
-from speech_recognition_module import speech_to_text, capture_interview_qa
 from speechrec import speech_to_text, capture_interview_qa
 from rag import RAGAnswerGenerator
 from intervieweval import AnswerComparisonScorer
