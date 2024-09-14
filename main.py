@@ -1,8 +1,8 @@
 import os
 from speech_recognition_module import speech_to_text, capture_interview_qa
-from rag_answer_generator import RAGAnswerGenerator
-from answer_comparison_scorer import AnswerComparisonScorer
-from langchain.embeddings import HuggingFaceEmbeddings
+from speechrec import speech_to_text, capture_interview_qa
+from rag import RAGAnswerGenerator
+from intervieweval import AnswerComparisonScorer
 
 class InterviewEvaluationPipeline:
     def __init__(self, knowledge_base_dir, groq_api_key):
