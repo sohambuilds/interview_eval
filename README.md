@@ -18,8 +18,8 @@ This Interview Evaluation System is an advanced tool designed to automate and en
 
 Key features:
 - Speech-to-text conversion for capturing interview questions and answers
-- RAG-based system for generating ideal answers
-- Sophisticated answer comparison and scoring mechanism
+- RAG-based system for generating ideal answers using FAISS and ConversationalRetrievalChain
+- Sophisticated answer comparison and scoring mechanism using ROUGE scores and LLM evaluation
 - Integration with Groq API for fast and efficient language processing
 
 ## System Requirements
@@ -54,13 +54,13 @@ Key features:
 
 4. Install the required dependencies:
    ```
-   pip install speech_recognition pyaudio langchain groq chromadb sentence-transformers sklearn
+   pip install SpeechRecognition==3.8.1 pyaudio==0.2.11 langchain==0.2.12 langchain-community==0.0.7 langchain-groq==0.0.5 faiss-cpu==1.7.4 rouge==1.0.1 sentence-transformers==2.2.2 scikit-learn==1.0.2 numpy
    ```
 
    Note: If you encounter issues installing PyAudio, you may need to install additional system dependencies:
    - On Ubuntu/Debian:
      ```
-     sudo apt-get install portaudio19-dev python-all-dev
+     sudo apt-get install portaudio19-dev python3-all-dev
      ```
    - On macOS:
      ```
@@ -77,8 +77,8 @@ The project consists of the following main files:
 
 - `main.py`: The main pipeline that integrates all components
 - `speechrec.py`: Handles speech-to-text conversion
-- `rag.py`: Implements the RAG-based answer generation system
-- `intervieweval.py`: Compares and scores interviewee answers
+- `rag.py`: Implements the RAG-based answer generation system using FAISS and ConversationalRetrievalChain
+- `intervieweval.py`: Compares and scores interviewee answers using ROUGE scores and LLM evaluation
 
 ## Configuration
 
@@ -93,7 +93,7 @@ The project consists of the following main files:
 
 2. Knowledge Base:
    - Create a directory to store your knowledge base text files
-   - Add relevant .txt files containing information about the interview topics
+   - Add relevant .txt files containing information about interview topics
    - Update the `knowledge_base_dir` variable in `main.py` with the path to your knowledge base directory
 
 ## Usage
@@ -112,8 +112,9 @@ The project consists of the following main files:
 
 4. Review the evaluation results, which include:
    - Final score
-   - Similarity score
-   - Detailed LLM evaluation
+   - ROUGE scores
+   - LLM evaluation score
+   - Detailed LLM evaluation explanation
 
 ## Customization
 
@@ -122,11 +123,15 @@ The project consists of the following main files:
    - Experiment with different embedding models by changing the `model_name` in `HuggingFaceEmbeddings`
 
 2. Adjusting the scoring system:
-   - Modify the weights in the `score_answer` method of `intervieweval.py`
+   - Modify the weights for ROUGE scores and LLM evaluation in the `score_answer` method of `intervieweval.py`
    - Edit the evaluation prompt in `AnswerComparisonScorer.__init__` to change the criteria
 
 3. Enhancing speech recognition:
    - Adjust the `duration` and `phrase_time_limit` parameters in `speechrec.py` for different listening behaviors
+
+4. Expanding the knowledge base:
+   - Add more .txt files to your knowledge base directory with relevant interview information
+   - Update the content of existing files to improve the system's understanding of various interview topics
 
 ## Troubleshooting
 
@@ -138,6 +143,7 @@ The project consists of the following main files:
 2. RAG system problems:
    - Verify that your knowledge base directory contains relevant .txt files
    - Check file permissions for the knowledge base directory
+   - Ensure the file encoding is UTF-8
 
 3. Groq API errors:
    - Confirm that your API key is correctly set as an environment variable
@@ -145,12 +151,13 @@ The project consists of the following main files:
    - Verify that you have sufficient API credits in your Groq account
 
 4. Scoring discrepancies:
-   - Review the LLM evaluation output for insights into the scoring process
+   - Review the ROUGE scores and LLM evaluation output for insights into the scoring process
+   - Check the console for any warnings about score calculations
    - Adjust the scoring weights in `intervieweval.py` if necessary
 
 5. General issues:
    - Check the console for any error messages or warnings
-   - Verify that all dependencies are correctly installed
+   - Verify that all dependencies are correctly installed and up to date
    - Ensure you're using a compatible Python version
 
 ## Contributing
