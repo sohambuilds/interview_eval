@@ -10,20 +10,17 @@ from intervieweval import AnswerComparisonScorer
 
 app = Flask(__name__)
 
-# Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Ensure the app knows where to find templates
 app.template_folder = 'templates'
 
-# Create a 'temp' directory if it doesn't exist
+
 TEMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp')
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-# Replace this path with the actual path to ffmpeg
 FFMPEG_PATH = r"C:\ProgramData\chocolatey\bin\ffmpeg.exe"
 
-# Initialize your components
+
 rag_generator = RAGAnswerGenerator("RAG", os.getenv("GROQ_API_KEY"))
 scorer = AnswerComparisonScorer(os.getenv("GROQ_API_KEY"))
 
