@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Evaluation System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .control-panel {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .content-box {
+            background-color: white;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        #conversation-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .qa-pair {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        #log {
+            font-family: monospace;
+            font-size: 14px;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interview Evaluation System</h1>
+    
+    <div class="control-panel">
+        <div>
+            <button id="startQuestion">Start Question</button>
+            <button id="stopQuestion" disabled>Stop Question</button>
+        </div>
+        <div>
+            <button id="startAnswer">Start Answer</button>
+            <button id="stopAnswer" disabled>Stop Answer</button>
+        </div>
+    </div>
+
+    <div class="content-box">
+        <h2>Current Question:</h2>
+        <p id="currentQuestion"></p>
+    </div>
+
+    <div class="content-box">
+        <h2>Current Answer:</h2>
+        <p id="currentAnswer"></p>
+    </div>
+
+    <div class="content-box">
+        <h2>Evaluation:</h2>
+        <pre id="evaluation"></pre>
+    </div>
+
+    <div class="content-box" id="conversation-history">
+        <h2>Conversation History</h2>
+    </div>
+
+    <div class="content-box">
+        <h2>Debug Log:</h2>
+        <div id="log"></div>
+    </div>
+
+    <script>
+
+let mediaRecorder;
+let audioChunks = [];
+let isRecordingQuestion = false;
+let currentQuestion = '';
+
+const startQuestionBtn = document.getElementById('startQuestion');
+const stopQuestionBtn = document.getElementById('stopQuestion');
+const startAnswerBtn = document.getElementById('startAnswer');
+const stopAnswerBtn = document.getElementById('stopAnswer');
+const logDiv = document.getElementById('log');
+
+function log(message) {
+    console.log(message);
+    logDiv.innerHTML += `<p>${new Date().toISOString()}: ${message}</p>`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+async function startRecording(isQuestion) {
+    log(`Starting recording (isQuestion: ${isQuestion})`);
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+            log('Audio data available');
+        };
+
+        mediaRecorder.onstart = () => {
+            log('MediaRecorder started');
+        };
+
+        mediaRecorder.onerror = (event) => {
+            log(`MediaRecorder error: ${event.error}`);
+        };
+
+        mediaRecorder.start();
+        isRecordingQuestion = isQuestion;
+        updateButtonState(true, isQuestion);
+    } catch (err) {
+        log(`Error starting recording: ${err.message}`);
+    }
+}
+
+function stopRecording(isQuestion) {
+    log(`Stopping recording (isQuestion: ${isQuestion})`);
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        updateButtonState(false, isQuestion);
+
+        mediaRecorder.onstop = async () => {
+            log('MediaRecorder stopped');
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            log(`Audio blob created, size: ${audioBlob.size} bytes`);
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.webm');
+            formData.append('is_question', isQuestion);
+            if (!isQuestion) {
+                formData.append('question', currentQuestion);
+            }
+
+            try {
+        log('Sending audio to server...');
+        const response = await fetch('/process_audio', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        log('Received response from server');
+
+        if (result.error) {
+            throw new Error(result.error);
+        }
+
+        if (isQuestion) {
+            currentQuestion = result.text;
+            document.getElementById('currentQuestion').textContent = currentQuestion;
+            log(`Question set: ${currentQuestion}`);
+        } else {
+            document.getElementById('currentAnswer').textContent = result.text;
+            document.getElementById('evaluation').textContent = JSON.stringify(result.evaluation, null, 2);
+            addToConversationHistory(currentQuestion, result.text, result.evaluation);
+            log('Answer and evaluation updated');
+        }
+
+        // Update button states after processing is complete
+        updateButtonState(false, false);
+    } catch (error) {
+        log(`Error: ${error.message}`);
+        // Ensure buttons are enabled even if there's an error
+        updateButtonState(false, false);
+    }
+};
+} else {
+log('MediaRecorder not available or already inactive');
+updateButtonState(false, false);
+}
+}
+
+function updateButtonState(isRecording, isQuestion) {
+startQuestionBtn.disabled = isRecording;
+stopQuestionBtn.disabled = !isRecording || !isQuestion;
+startAnswerBtn.disabled = isRecording || (currentQuestion === '' && !isQuestion);
+stopAnswerBtn.disabled = !isRecording || isQuestion;
+log(`Button states updated: isRecording=${isRecording}, isQuestion=${isQuestion}, currentQuestion=${currentQuestion !== ''}`);
+}
+        
+        function addToConversationHistory(question, answer, evaluation) {
+            const historyDiv = document.getElementById('conversation-history');
+            const qaPair = document.createElement('div');
+            qaPair.className = 'qa-pair';
+            qaPair.innerHTML = `
+                <p><strong>Q:</strong> ${question}</p>
+                <p><strong>A:</strong> ${answer}</p>
+                <p><strong>Evaluation:</strong></p>
+                <pre>${JSON.stringify(evaluation, null, 2)}</pre>
+            `;
+            historyDiv.insertBefore(qaPair, historyDiv.firstChild);
+        }
+
+
+        startQuestionBtn.addEventListener('click', () => startRecording(true));
+stopQuestionBtn.addEventListener('click', () => stopRecording(true));
+startAnswerBtn.addEventListener('click', () => startRecording(false));
+stopAnswerBtn.addEventListener('click', () => stopRecording(false));
+
+    
+    </script>
+</body>
+</html>

@@ -1,38 +1,26 @@
 import speech_recognition as sr
-import pyaudio
+import logging
 
-def speech_to_text(duration=5, phrase_time_limit=None):
-    """
-    Capture speech from the microphone and convert it to text.
-    
-    :param duration: Maximum number of seconds to listen for (default 5)
-    :param phrase_time_limit: Maximum number of seconds for a phrase (default None)
-    :return: Recognized text as a string
-    """
+def speech_to_text(audio_file_path):
     recognizer = sr.Recognizer()
-    
-    with sr.Microphone() as source:
-        print("Adjusting for ambient noise. Please wait...")
-        recognizer.adjust_for_ambient_noise(source, duration=1)
-        print("Listening...")
+    try:
+        with sr.AudioFile(audio_file_path) as source:
+            logging.info(f"Reading audio file: {audio_file_path}")
+            audio = recognizer.record(source)
         
-        try:
-            audio = recognizer.listen(source, timeout=duration, phrase_time_limit=phrase_time_limit)
-            print("Processing speech...")
-            
-            text = recognizer.recognize_google(audio)
-            print("Recognized text:", text)
-            return text
-        
-        except sr.WaitTimeoutError:
-            print("Listening timed out. No speech detected.")
-            return ""
-        except sr.UnknownValueError:
-            print("Speech recognition could not understand the audio.")
-            return ""
-        except sr.RequestError as e:
-            print(f"Could not request results from the speech recognition service; {e}")
-            return ""
+        logging.info("Attempting to recognize speech")
+        text = recognizer.recognize_google(audio)
+        logging.info(f"Speech recognized: {text}")
+        return text
+    except sr.UnknownValueError:
+        logging.error("Speech recognition could not understand the audio")
+        return "Speech recognition could not understand the audio"
+    except sr.RequestError as e:
+        logging.error(f"Could not request results from speech recognition service; {e}")
+        return f"Could not request results from speech recognition service; {e}"
+    except Exception as e:
+        logging.error(f"Unexpected error in speech recognition: {e}")
+        raise  # Re-raise the exception to be caught by the calling function
 
 def capture_interview_qa():
     """

@@ -1,5 +1,5 @@
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+import logging
+import asyncio
 from langchain_groq import ChatGroq
 from langchain.prompts import ChatPromptTemplate
 from rouge import Rouge
@@ -10,17 +10,17 @@ class AnswerComparisonScorer:
         self.rouge = Rouge()
         
         self.eval_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert evaluator of interview answers, particularly for introductions and greetings."),
+            ("system", "You are an expert evaluator of interview answers."),
             ("human", """
             Question: {question}
             Ideal Answer: {ideal_answer}
             Actual Answer: {actual_answer}
             
             Evaluate the actual answer based on the following criteria:
-            1. Appropriateness of the greeting
-            2. Clarity in stating the name
-            3. Expression of enthusiasm or pleasure to meet
-            4. Overall professionalism and politeness
+            1. Relevance to the question
+            2. Accuracy of information
+            3. Completeness of the response
+            4. Clarity and articulation
             
             Provide a score out of 10 and a brief explanation for your scoring.
             
@@ -37,43 +37,43 @@ class AnswerComparisonScorer:
             'rouge-l': scores[0]['rouge-l']['f']
         }
 
-    def llm_evaluation(self, question, ideal_answer, actual_answer):
+    async def llm_evaluation(self, question, ideal_answer, actual_answer):
         messages = self.eval_prompt.format_messages(
             question=question,
             ideal_answer=ideal_answer,
             actual_answer=actual_answer
         )
-        response = self.llm(messages)
+        response = await self.llm.ainvoke(messages)
         return response.content
 
-    def score_answer(self, question, ideal_answer, actual_answer):
-        rouge_scores = self.compute_rouge_scores(ideal_answer, actual_answer)
-        llm_evaluation = self.llm_evaluation(question, ideal_answer, actual_answer)
-        
-        # Handle potential errors in LLM score parsing
+    def parse_llm_score(self, llm_evaluation):
         try:
-            llm_score_line = [line for line in llm_evaluation.split('\n') if line.startswith("Score:")][0]
-            llm_score = float(llm_score_line.split(':')[1].split('/')[0].strip()) / 10
-        except (IndexError, ValueError):
-            print("Warning: Could not parse LLM score. Using default score of 0.5.")
-            llm_score = 0.5
+            score_line = next(line for line in llm_evaluation.split('\n') if line.startswith("Score"))
+            score = float(score_line.split(':')[1].strip().split('/')[0])
+            return score / 10  # Normalize to 0-1 range
+        except Exception as e:
+            logging.error(f"Error parsing LLM score: {e}")
+            return 0.5  # Default score if parsing fails
 
-        # Calculate ROUGE score, handling potential zero values
-        rouge_values = list(rouge_scores.values())
-        non_zero_rouge = [score for score in rouge_values if score > 0]
-        if non_zero_rouge:
-            rouge_score = np.mean(non_zero_rouge)
-        else:
-            print("Warning: All ROUGE scores are zero. Using minimum score of 0.01.")
-            rouge_score = 0.01
+    async def score_answer(self, question, ideal_answer, actual_answer):
+        try:
+            rouge_scores = self.compute_rouge_scores(ideal_answer, actual_answer)
+            llm_evaluation = await self.llm_evaluation(question, ideal_answer, actual_answer)
+            llm_score = self.parse_llm_score(llm_evaluation)
 
-        # Calculate final score
-        final_score = 0.3 * rouge_score + 0.7 * llm_score
-        
-        return {
-            'final_score': final_score,
-            'rouge_scores': rouge_scores,
-            'llm_evaluation': llm_evaluation,
-            'llm_score': llm_score,
-            'rouge_score': rouge_score
-        }
+            rouge_score = sum(rouge_scores.values()) / len(rouge_scores)
+            final_score = 0.5 * rouge_score + 0.5 * llm_score
+
+            return {
+                'final_score': final_score,
+                'rouge_scores': rouge_scores,
+                'llm_evaluation': llm_evaluation,
+                'llm_score': llm_score
+            }
+        except Exception as e:
+            logging.error(f"Error in score_answer: {e}")
+            raise
+
+# Wrapper function for synchronous calls
+def score_answer_sync(self, question, ideal_answer, actual_answer):
+    return asyncio.run(self.score_answer(question, ideal_answer, actual_answer))
