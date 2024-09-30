@@ -89,17 +89,16 @@
         <h2>Current Question:</h2>
         <p id="currentQuestion"></p>
     </div>
-
+    
     <div class="content-box">
         <h2>Current Answer:</h2>
         <p id="currentAnswer"></p>
     </div>
-
+    
     <div class="content-box">
         <h2>Evaluation:</h2>
-        <pre id="evaluation"></pre>
+        <pre id="evaluation" class="truncate expandable"></pre>
     </div>
-
     <div class="content-box" id="conversation-history">
         <h2>Conversation History</h2>
     </div>
@@ -223,18 +222,27 @@ stopAnswerBtn.disabled = !isRecording || isQuestion;
 log(`Button states updated: isRecording=${isRecording}, isQuestion=${isQuestion}, currentQuestion=${currentQuestion !== ''}`);
 }
         
-        function addToConversationHistory(question, answer, evaluation) {
-            const historyDiv = document.getElementById('conversation-history');
-            const qaPair = document.createElement('div');
-            qaPair.className = 'qa-pair';
-            qaPair.innerHTML = `
-                <p><strong>Q:</strong> ${question}</p>
-                <p><strong>A:</strong> ${answer}</p>
-                <p><strong>Evaluation:</strong></p>
-                <pre>${JSON.stringify(evaluation, null, 2)}</pre>
-            `;
-            historyDiv.insertBefore(qaPair, historyDiv.firstChild);
-        }
+function addToConversationHistory(question, answer, evaluation) {
+        const historyDiv = document.getElementById('conversation-history');
+        const qaPair = document.createElement('div');
+        qaPair.className = 'qa-pair';
+        qaPair.innerHTML = `
+            <p><strong>Q:</strong> ${escapeHtml(question)}</p>
+            <p><strong>A:</strong> ${escapeHtml(answer)}</p>
+            <p><strong>Evaluation:</strong></p>
+            <pre>${escapeHtml(JSON.stringify(evaluation, null, 2))}</pre>
+        `;
+        historyDiv.insertBefore(qaPair, historyDiv.firstChild);
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
 
 
         startQuestionBtn.addEventListener('click', () => startRecording(true));
