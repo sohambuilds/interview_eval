@@ -202,7 +202,6 @@ function stopRecording(isQuestion) {
             log('Answer and evaluation updated');
         }
 
-        // Update button states after processing is complete
         updateButtonState(false, false);
     } catch (error) {
         log(`Error: ${error.message}`);
